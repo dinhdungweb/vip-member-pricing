@@ -1,0 +1,45 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "9d2d46cc5ec89ebb17afaada4085e728"
+name = "VIP Member Pricing"
+application_url = "https://app.example.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+include_config_on_deploy = true
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/data_request"
+  compliance_topics = ["customers/data_request"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/redact"
+  compliance_topics = ["customers/redact"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/shop/redact"
+  compliance_topics = ["shop/redact"]
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_customers,read_discounts,read_orders,read_products,write_customers,write_discounts,write_validations"
+
+[auth]
+redirect_urls = [
+  "https://app.example.com/auth/callback",
+  "https://app.example.com/auth/shopify/callback",
+  "https://app.example.com/api/auth/callback"
+]
+
+[app_proxy]
+url = "/apps/vip-member"
+subpath = "vip-member"
+prefix = "apps"

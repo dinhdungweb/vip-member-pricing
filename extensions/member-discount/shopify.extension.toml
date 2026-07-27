@@ -1,4 +1,5 @@
 api_version = "2026-07"
+uid = "09720041-c1ca-b027-f98e-c0ba54a2e82cdf3ecaca"
 
 [[extensions]]
 name = "VIP member discount"

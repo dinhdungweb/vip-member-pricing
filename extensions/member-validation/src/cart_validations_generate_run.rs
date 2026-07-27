@@ -2,21 +2,21 @@ use super::schema;
 use shopify_function::prelude::*;
 use shopify_function::Result;
 
-#[derive(Deserialize, Default, PartialEq)]
+#[derive(serde::Deserialize, Default, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 struct MemberState {
     enabled: bool,
     tier_rank: i32,
 }
 
-#[derive(Deserialize, Default, PartialEq)]
+#[derive(serde::Deserialize, Default, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 struct AccessConfig {
     enabled: bool,
     rules: Vec<AccessRule>,
 }
 
-#[derive(Deserialize, Default, PartialEq)]
+#[derive(serde::Deserialize, Default, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 struct AccessRule {
     product_gids: Vec<String>,
@@ -31,20 +31,23 @@ struct AccessRule {
 fn cart_validations_generate_run(
     input: schema::cart_validations_generate_run::Input,
 ) -> Result<schema::CartValidationsGenerateRunResult> {
-    let config: &AccessConfig = match input.validation().metafield() {
-        Some(metafield) => metafield.json_value(),
+    let config: AccessConfig = match input.validation().metafield() {
+        Some(metafield) => match serde_json::from_str(metafield.value()) {
+            Ok(config) => config,
+            Err(_) => return Ok(empty()),
+        },
         None => return Ok(empty()),
     };
     if !config.enabled {
         return Ok(empty());
     }
 
-    let member: Option<&MemberState> = input
+    let member: Option<MemberState> = input
         .cart()
         .buyer_identity()
         .and_then(|identity| identity.customer())
         .and_then(|customer| customer.metafield())
-        .map(|metafield| metafield.json_value());
+        .and_then(|metafield| serde_json::from_str(metafield.value()).ok());
     let tier_rank = member
         .filter(|state| state.enabled)
         .map(|state| state.tier_rank)

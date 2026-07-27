@@ -3,7 +3,7 @@ query Input {
     buyerIdentity {
       customer {
         metafield(namespace: "$app:vip_pricing", key: "member_state") {
-          jsonValue
+          value
         }
       }
     }
@@ -22,7 +22,7 @@ query Input {
   }
   validation {
     metafield(namespace: "$app:vip_pricing", key: "access_config") {
-      jsonValue
+      value
     }
   }
 }

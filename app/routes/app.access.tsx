@@ -3,6 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
+import { useState } from "react";
 import {
   Form,
   useActionData,
@@ -17,6 +18,14 @@ import {
 import { ensureShop } from "../modules/shops/shop.server";
 import { withTenant } from "../modules/shared/tenant.server";
 import { authenticate } from "../shopify.server";
+import {
+  Alert,
+  Card,
+  EmptyState,
+  PageHeader,
+  SectionHeader,
+  StatusBadge,
+} from "../components/ui";
 
 function list(value: FormDataEntryValue | null): string[] {
   return [
@@ -51,7 +60,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const shop = await ensureShop(session.shop);
   const subscription = await syncManagedPricingSubscription(shop.id, admin);
   if (!subscriptionCanEdit(subscription)) {
-    return { ok: false, error: "An active plan is required to edit access rules." };
+    return {
+      ok: false,
+      error: "An active plan is required to edit access rules.",
+    };
   }
   const formData = await request.formData();
   const intent = String(formData.get("intent"));
@@ -163,106 +175,229 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function ProductAccessRoute() {
   const { rules } = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
+  const [ruleType, setRuleType] = useState("LOGIN_REQUIRED");
+
   return (
-    <s-page heading="Product access">
-      {result?.message && <s-banner tone="success">{result.message}</s-banner>}
-      {result?.error && <s-banner tone="critical">{result.error}</s-banner>}
-      <s-section heading="Active rules">
-        {rules.length === 0 ? (
-          <s-paragraph>No access rules configured.</s-paragraph>
-        ) : (
-          <s-stack direction="block" gap="small">
-            {rules.map((rule) => (
-              <s-grid key={rule.id} gridTemplateColumns="1fr auto" gap="base">
-                <s-text>
-                  {rule.name} - {rule.type}
-                  {rule.minimumTierRank !== null
-                    ? ` (rank ${rule.minimumTierRank}+)`
-                    : ""}
-                </s-text>
-                <Form method="post">
-                  <input type="hidden" name="intent" value="delete" />
-                  <input type="hidden" name="id" value={rule.id} />
-                  <s-button type="submit" tone="critical">
-                    Delete
-                  </s-button>
-                </Form>
-              </s-grid>
-            ))}
-          </s-stack>
-        )}
-      </s-section>
-      <s-section heading="Create rule">
-        <Form method="post">
-          <input type="hidden" name="intent" value="create" />
-          <p>
-            <label>
-              Name <input name="name" required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Requirement{" "}
-              <select name="type">
-                <option value="LOGIN_REQUIRED">Login required</option>
-                <option value="MINIMUM_TIER">Minimum tier rank</option>
-              </select>
-            </label>
-          </p>
-          <p>
-            <label>
-              Minimum tier rank{" "}
-              <input name="minimumTierRank" type="number" min="0" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Product GIDs (comma/new line)
-              <textarea name="productGids" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Collection GIDs (max 20)
-              <textarea name="collectionGids" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Included product tags
-              <textarea name="includeTags" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Excluded product tags
-              <textarea name="excludeTags" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Blocked message (VI)
-              <input name="messageVi" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Blocked message (EN)
-              <input name="messageEn" />
-            </label>
-          </p>
-          <s-button type="submit">Add rule</s-button>
-        </Form>
-      </s-section>
-      <s-section heading="Publish">
-        <Form method="post">
-          <input type="hidden" name="intent" value="publish" />
-          <s-button type="submit" variant="primary">
-            Publish access configuration
-          </s-button>
-        </Form>
-      </s-section>
-    </s-page>
+    <main className="app-page">
+      <PageHeader
+        eyebrow="Step 3 of 4"
+        title="Product access"
+        description="Restrict products or collections by sign-in status and membership tier."
+        actions={<StatusBadge tone="info">{rules.length} rules</StatusBadge>}
+      />
+
+      {result?.message && <Alert tone="success">{result.message}</Alert>}
+      {result?.error && <Alert tone="danger">{result.error}</Alert>}
+
+      <div className="content-grid content-grid--wide-aside">
+        <div className="content-main">
+          <Card>
+            <SectionHeader
+              title="Current rules"
+              description="Saved rules take effect only after you publish the configuration."
+            />
+            {rules.length === 0 ? (
+              <EmptyState
+                title="No access rules yet"
+                description="Create the first rule with the form below, then publish it."
+              />
+            ) : (
+              <div className="item-list">
+                {rules.map((rule) => (
+                  <article className="rule-card" key={rule.id}>
+                    <div className="rule-card__head">
+                      <div>
+                        <h3>{rule.name}</h3>
+                        <p>
+                          {rule.type === "LOGIN_REQUIRED"
+                            ? "Customer must sign in"
+                            : `Requires rank ${rule.minimumTierRank}+`}
+                        </p>
+                      </div>
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="delete" />
+                        <input type="hidden" name="id" value={rule.id} />
+                        <button
+                          className="button button--danger button--small"
+                          type="submit"
+                        >
+                          Delete
+                        </button>
+                      </Form>
+                    </div>
+                    <div className="meta-list">
+                      <span className="meta-chip">
+                        {rule.productGids.length} products
+                      </span>
+                      <span className="meta-chip">
+                        {rule.collectionGids.length} collections
+                      </span>
+                      <span className="meta-chip">
+                        {rule.includeTags.length} included tags
+                      </span>
+                      <span className="meta-chip">
+                        {rule.excludeTags.length} excluded tags
+                      </span>
+                      <StatusBadge tone={rule.enabled ? "success" : "neutral"}>
+                        {rule.enabled ? "Enabled" : "Disabled"}
+                      </StatusBadge>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          <Card>
+            <SectionHeader
+              title="Create a new rule"
+              description="1. Choose a requirement → 2. Set the scope → 3. Write the message."
+            />
+            <Form method="post" className="form-stack">
+              <input type="hidden" name="intent" value="create" />
+              <div className="form-grid">
+                <label className="field">
+                  <span className="field__label">Rule name</span>
+                  <input
+                    name="name"
+                    placeholder="Example: Gold VIP collection"
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span className="field__label">Access requirement</span>
+                  <select
+                    name="type"
+                    value={ruleType}
+                    onChange={(event) => setRuleType(event.currentTarget.value)}
+                  >
+                    <option value="LOGIN_REQUIRED">Sign-in required</option>
+                    <option value="MINIMUM_TIER">Minimum tier rank</option>
+                  </select>
+                </label>
+                {ruleType === "MINIMUM_TIER" && (
+                  <label className="field">
+                    <span className="field__label">Minimum tier rank</span>
+                    <input
+                      name="minimumTierRank"
+                      type="number"
+                      min="0"
+                      required
+                    />
+                    <small>
+                      For example, enter 2 to allow rank 2 and above.
+                    </small>
+                  </label>
+                )}
+              </div>
+
+              <hr className="divider" />
+              <SectionHeader
+                title="Rule scope"
+                description="Separate values with commas or new lines."
+              />
+              <div className="form-grid">
+                <label className="field">
+                  <span className="field__label">Product GID</span>
+                  <textarea
+                    name="productGids"
+                    placeholder="gid://shopify/Product/…"
+                  />
+                  <small>Up to 100 products.</small>
+                </label>
+                <label className="field">
+                  <span className="field__label">Collection GID</span>
+                  <textarea
+                    name="collectionGids"
+                    placeholder="gid://shopify/Collection/…"
+                  />
+                  <small>Up to 20 collections.</small>
+                </label>
+                <label className="field">
+                  <span className="field__label">Included product tags</span>
+                  <textarea
+                    name="includeTags"
+                    placeholder="vip-only, early-access"
+                  />
+                </label>
+                <label className="field">
+                  <span className="field__label">Excluded product tags</span>
+                  <textarea
+                    name="excludeTags"
+                    placeholder="clearance, preorder"
+                  />
+                </label>
+              </div>
+
+              <hr className="divider" />
+              <SectionHeader
+                title="Blocked message"
+                description="Briefly explain what the customer should do next."
+              />
+              <div className="form-grid">
+                <label className="field">
+                  <span className="field__label">Vietnamese</span>
+                  <input
+                    name="messageVi"
+                    placeholder="Please sign in to continue."
+                  />
+                </label>
+                <label className="field">
+                  <span className="field__label">English</span>
+                  <input
+                    name="messageEn"
+                    placeholder="Please sign in to continue."
+                  />
+                </label>
+              </div>
+              <div className="form-footer">
+                <p>The rule will be saved and ready to publish.</p>
+                <button className="button button--primary" type="submit">
+                  Add rule
+                </button>
+              </div>
+            </Form>
+          </Card>
+        </div>
+
+        <aside className="content-aside">
+          <Card className="card--accent">
+            <SectionHeader
+              title="Publish to Shopify"
+              description="Send all enabled rules to the cart validation flow."
+            />
+            <ol className="publish-checklist">
+              <li>Review the product and collection scope.</li>
+              <li>Confirm tier ranks match the Program page.</li>
+              <li>Publish, then test with a customer account.</li>
+            </ol>
+            <Form method="post">
+              <input type="hidden" name="intent" value="publish" />
+              <button
+                className="button button--primary button--full"
+                type="submit"
+              >
+                Publish configuration
+              </button>
+            </Form>
+          </Card>
+          <Card>
+            <SectionHeader title="Evaluation order" />
+            <ul className="plain-list">
+              <li>
+                <strong>1.</strong> Determine whether the product is in scope.
+              </li>
+              <li>
+                <strong>2.</strong> Check sign-in status or tier rank.
+              </li>
+              <li>
+                <strong>3.</strong> Allow purchase or show the blocked message.
+              </li>
+            </ul>
+          </Card>
+        </aside>
+      </div>
+    </main>
   );
 }
 

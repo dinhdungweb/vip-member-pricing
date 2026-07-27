@@ -11,6 +11,7 @@ CREATE ROLE vip_pricing LOGIN PASSWORD :'runtime_password' NOSUPERUSER NOCREATED
 CREATE ROLE vip_pricing_worker LOGIN PASSWORD :'worker_password' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS;
 CREATE ROLE vip_pricing_migrate LOGIN PASSWORD :'migration_password' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS;
 GRANT CONNECT ON DATABASE vip_pricing TO vip_pricing, vip_pricing_worker, vip_pricing_migrate;
+GRANT CREATE ON DATABASE vip_pricing TO vip_pricing_migrate;
 GRANT CREATE ON SCHEMA public TO vip_pricing_migrate;
 ALTER DEFAULT PRIVILEGES FOR ROLE vip_pricing_migrate IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO vip_pricing;

@@ -2,14 +2,14 @@ use super::schema;
 use shopify_function::prelude::*;
 use shopify_function::Result;
 
-#[derive(Deserialize, Default, PartialEq)]
+#[derive(serde::Deserialize, Default, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 struct MemberState {
     enabled: bool,
     discount_bps: i32,
 }
 
-#[derive(Deserialize, Default, PartialEq)]
+#[derive(serde::Deserialize, Default, PartialEq)]
 #[serde(default, rename_all = "camelCase")]
 struct DiscountConfig {
     enabled: bool,
@@ -27,21 +27,27 @@ fn tier_discount_amount(current: f64, compare_at: Option<f64>, bps: i32) -> f64 
 fn cart_lines_discounts_generate_run(
     input: schema::cart_lines_discounts_generate_run::Input,
 ) -> Result<schema::CartLinesDiscountsGenerateRunResult> {
-    let config: &DiscountConfig = match input.discount().metafield() {
-        Some(metafield) => metafield.json_value(),
+    let config: DiscountConfig = match input.discount().metafield() {
+        Some(metafield) => match serde_json::from_str(metafield.value()) {
+            Ok(config) => config,
+            Err(_) => return Ok(empty()),
+        },
         None => return Ok(empty()),
     };
     if !config.enabled {
         return Ok(empty());
     }
 
-    let member: &MemberState = match input
+    let member: MemberState = match input
         .cart()
         .buyer_identity()
         .and_then(|identity| identity.customer())
         .and_then(|customer| customer.metafield())
     {
-        Some(metafield) => metafield.json_value(),
+        Some(metafield) => match serde_json::from_str(metafield.value()) {
+            Ok(member) => member,
+            Err(_) => return Ok(empty()),
+        },
         None => return Ok(empty()),
     };
     let discount_bps = member.discount_bps.clamp(0, 10_000);
@@ -89,6 +95,7 @@ fn cart_lines_discounts_generate_run(
             )],
             message: Some(format!("{}% MEMBER", discount_bps as f64 / 100.0)),
             associated_discount_code: None,
+            prerequisites: None,
         });
     }
 

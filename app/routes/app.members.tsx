@@ -1,14 +1,29 @@
 import { randomUUID } from "node:crypto";
+import { useMemo, useState } from "react";
 import type {
   ActionFunctionArgs,
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { Form, useActionData, useLoaderData, useRouteError } from "react-router";
+import {
+  Form,
+  useActionData,
+  useLoaderData,
+  useRouteError,
+} from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { ensureShop } from "../modules/shops/shop.server";
 import { withTenant } from "../modules/shared/tenant.server";
 import { authenticate } from "../shopify.server";
+import {
+  Alert,
+  Card,
+  EmptyState,
+  Metric,
+  PageHeader,
+  SectionHeader,
+  StatusBadge,
+} from "../components/ui";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -172,49 +187,151 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 export default function MembersRoute() {
   const data = useLoaderData<typeof loader>();
   const result = useActionData<typeof action>();
+  const [query, setQuery] = useState("");
+  const visibleMembers = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    if (!normalized) return data.members;
+    return data.members.filter(
+      (member) =>
+        member.customerGid.toLowerCase().includes(normalized) ||
+        member.tierName.toLowerCase().includes(normalized),
+    );
+  }, [data.members, query]);
+  const totalPoints = data.members.reduce(
+    (sum, member) => sum + BigInt(member.pointsBalance),
+    0n,
+  );
+
   return (
-    <s-page heading="Members">
-      {result?.message && <s-banner tone="success">{result.message}</s-banner>}
-      {result?.error && <s-banner tone="critical">{result.error}</s-banner>}
-      <s-banner tone="info">
-        Only Shopify customer IDs and membership aggregates are stored. No
+    <main className="app-page">
+      <PageHeader
+        eyebrow="Customer management"
+        title="Members"
+        description="Review tiers and point balances, then make audited manual adjustments."
+      />
+
+      {result?.message && <Alert tone="success">{result.message}</Alert>}
+      {result?.error && <Alert tone="danger">{result.error}</Alert>}
+      <Alert tone="info">
+        The app stores only Shopify customer IDs and membership aggregates. No
         customer profile data is retained.
-      </s-banner>
-      <s-section heading="Recent members">
+      </Alert>
+
+      <section className="metrics-grid" aria-label="Member metrics">
+        <Metric
+          label="Recent members"
+          value={String(data.members.length)}
+          help="Up to 100 records"
+        />
+        <Metric
+          label="Total available points"
+          value={totalPoints.toLocaleString("en-US")}
+        />
+        <Metric label="Tier count" value={String(data.tiers.length)} />
+        <Metric
+          label="Visible results"
+          value={String(visibleMembers.length)}
+          help={query ? "Filter applied" : "No filter"}
+        />
+      </section>
+
+      <Card>
+        <SectionHeader
+          title="Member list"
+          description="Override a tier or add and subtract points for an individual member."
+          action={
+            <label className="search-field">
+              <span className="sr-only">Search members</span>
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.currentTarget.value)}
+                placeholder="Search by ID or tier..."
+              />
+            </label>
+          }
+        />
+
         {data.members.length === 0 ? (
-          <s-text>No members yet.</s-text>
+          <EmptyState
+            title="No members yet"
+            description="Members appear after a customer qualifies or places an eligible order."
+          />
+        ) : visibleMembers.length === 0 ? (
+          <EmptyState
+            title="No matching members"
+            description="Try searching with part of the customer ID or tier name."
+          />
         ) : (
-          <s-stack direction="block" gap="base">
-            {data.members.map((member) => (
-              <s-section key={member.id} heading={member.customerGid}>
-                <s-text>
-                  {member.tierName} · spend {member.netSpendMinor} · points{" "}
-                  {member.pointsBalance}
-                </s-text>
-                <Form method="post">
-                  <input type="hidden" name="intent" value="tier" />
-                  <input type="hidden" name="memberId" value={member.id} />
-                  <select name="tierId" defaultValue={member.tierId ?? ""}>
-                    {data.tiers.map((tier) => (
-                      <option key={tier.id} value={tier.id}>
-                        {tier.name} (rank {tier.rank})
-                      </option>
-                    ))}
-                  </select>{" "}
-                  <s-button type="submit">Override tier</s-button>
-                </Form>
-                <Form method="post">
-                  <input type="hidden" name="intent" value="points" />
-                  <input type="hidden" name="memberId" value={member.id} />
-                  <input name="delta" type="number" step="1" required />{" "}
-                  <s-button type="submit">Adjust points</s-button>
-                </Form>
-              </s-section>
+          <div className="item-list">
+            {visibleMembers.map((member) => (
+              <article className="member-card" key={member.id}>
+                <div className="member-card__head">
+                  <div>
+                    <h3>{member.customerGid}</h3>
+                    <p>Internal ID: {member.id}</p>
+                  </div>
+                  <StatusBadge tone={member.tierId ? "info" : "neutral"}>
+                    {member.tierName}
+                  </StatusBadge>
+                </div>
+
+                <div className="member-stats">
+                  <div>
+                    <span>Net spend</span>
+                    <strong className="numeric">
+                      {Number(member.netSpendMinor).toLocaleString("en-US")}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Available points</span>
+                    <strong className="numeric">
+                      {BigInt(member.pointsBalance).toLocaleString("en-US")}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="member-actions">
+                  <Form method="post" className="inline-form">
+                    <input type="hidden" name="intent" value="tier" />
+                    <input type="hidden" name="memberId" value={member.id} />
+                    <label className="field">
+                      <span>Tier override</span>
+                      <select name="tierId" defaultValue={member.tierId ?? ""}>
+                        {data.tiers.map((tier) => (
+                          <option key={tier.id} value={tier.id}>
+                            {tier.name} · rank {tier.rank}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button className="button button--small" type="submit">
+                      Update tier
+                    </button>
+                  </Form>
+                  <Form method="post" className="inline-form">
+                    <input type="hidden" name="intent" value="points" />
+                    <input type="hidden" name="memberId" value={member.id} />
+                    <label className="field">
+                      <span>Point adjustment</span>
+                      <input
+                        name="delta"
+                        type="number"
+                        step="1"
+                        placeholder="+100 or -50"
+                        required
+                      />
+                    </label>
+                    <button className="button button--small" type="submit">
+                      Apply
+                    </button>
+                  </Form>
+                </div>
+              </article>
             ))}
-          </s-stack>
+          </div>
         )}
-      </s-section>
-    </s-page>
+      </Card>
+    </main>
   );
 }
 

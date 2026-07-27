@@ -21,6 +21,14 @@ import {
   publishShopifyFunctions,
 } from "../modules/pricing/publish.server";
 import { withTenant } from "../modules/shared/tenant.server";
+import {
+  Alert,
+  Card,
+  FlowSteps,
+  PageHeader,
+  SectionHeader,
+  StatusBadge,
+} from "../components/ui";
 
 function integer(formData: FormData, name: string): number {
   const value = Number(formData.get(name));
@@ -375,139 +383,285 @@ export default function ProgramRoute() {
   const result = useActionData<typeof action>();
 
   return (
-    <s-page heading="Program configuration">
-      {result?.message && <s-banner tone="success">{result.message}</s-banner>}
-      {result?.error && <s-banner tone="critical">{result.error}</s-banner>}
+    <main className="app-page">
+      <PageHeader
+        eyebrow="Step 2 of 4"
+        title="Program & VIP tiers"
+        description="Configure point earning, tier qualification, and when the program goes live."
+        actions={
+          <StatusBadge tone={data.enabled ? "success" : "neutral"}>
+            {data.enabled ? "Active" : "Not active"}
+          </StatusBadge>
+        }
+      />
 
-      <s-section heading="Earning and activation">
-        <Form method="post">
-          <input type="hidden" name="intent" value="program" />
-          <p>
-            <label>
-              <input
-                type="checkbox"
-                name="enabled"
-                defaultChecked={data.enabled}
-              />{" "}
-              Activate program
-            </label>
-          </p>
-          <p>
-            <label>
-              Program start (UTC)
-              <input
-                name="goLiveAt"
-                type="datetime-local"
-                defaultValue={data.goLiveAt}
-              />
-            </label>
-          </p>
-          <p>
-            <label>
-              Points earned
-              <input
-                name="pointsEarnNumerator"
-                type="number"
-                min="1"
-                defaultValue={data.pointsEarnNumerator}
-              />
-            </label>
-          </p>
-          <p>
-            <label>
-              Per spend amount in minor units
-              <input
-                name="pointsSpendMinor"
-                type="number"
-                min="1"
-                defaultValue={data.pointsSpendMinor}
-              />
-            </label>
-          </p>
-          <s-button type="submit" variant="primary">
-            Save program
-          </s-button>
-        </Form>
-      </s-section>
+      {result?.message && <Alert tone="success">{result.message}</Alert>}
+      {result?.error && <Alert tone="danger">{result.error}</Alert>}
 
-      <s-section heading="Membership tiers">
-        <s-stack direction="block" gap="base">
-          {data.tiers.map((tier) => (
-            <Form method="post" key={tier.id}>
-              <input type="hidden" name="id" value={tier.id} />
-              <input name="name" defaultValue={tier.name} required />{" "}
-              <input
-                name="rank"
-                type="number"
-                min="0"
-                defaultValue={tier.rank}
-                required
-              />{" "}
-              <input
-                name="minSpendMinor"
-                type="number"
-                min="0"
-                defaultValue={tier.minSpendMinor}
-                required
-              />{" "}
-              <input
-                name="discountBps"
-                type="number"
-                min="0"
-                max="10000"
-                defaultValue={tier.discountBps}
-                required
-              />{" "}
-              <button type="submit" name="intent" value="tier-update">
-                Save
-              </button>{" "}
-              {tier.minSpendMinor !== "0" && (
-                <button type="submit" name="intent" value="tier-delete">
-                  Delete
+      <div className="content-grid">
+        <div className="content-main">
+          <Card>
+            <SectionHeader
+              title="Point earning & activation"
+              description="Save this configuration after reviewing the tiers below."
+            />
+            <Form method="post" className="stack-form">
+              <input type="hidden" name="intent" value="program" />
+              <div className="checkbox-row">
+                <input
+                  id="program-enabled"
+                  type="checkbox"
+                  name="enabled"
+                  defaultChecked={data.enabled}
+                />
+                <label htmlFor="program-enabled">
+                  <strong>Activate program</strong>
+                  <small>
+                    Saving will publish pricing and purchase eligibility
+                    configuration to Shopify.
+                  </small>
+                </label>
+              </div>
+
+              <div className="form-grid">
+                <label className="field field--wide">
+                  <span>Program start time (UTC)</span>
+                  <input
+                    name="goLiveAt"
+                    type="datetime-local"
+                    defaultValue={data.goLiveAt}
+                  />
+                  <small>
+                    Required for activation. Customers receive benefits only
+                    after this time.
+                  </small>
+                </label>
+                <label className="field">
+                  <span>Points earned</span>
+                  <input
+                    name="pointsEarnNumerator"
+                    type="number"
+                    min="1"
+                    defaultValue={data.pointsEarnNumerator}
+                  />
+                  <small>Example: earn 1 point</small>
+                </label>
+                <label className="field">
+                  <span>For every amount spent</span>
+                  <input
+                    name="pointsSpendMinor"
+                    type="number"
+                    min="1"
+                    defaultValue={data.pointsSpendMinor}
+                  />
+                  <small>Use the store currency&apos;s minor unit.</small>
+                </label>
+              </div>
+
+              <div className="form-actions">
+                <button className="button button-primary" type="submit">
+                  Save program configuration
                 </button>
-              )}
+              </div>
             </Form>
-          ))}
-        </s-stack>
-        <Form method="post">
-          <input type="hidden" name="intent" value="tier" />
-          <p>
-            <label>
-              Name <input name="name" required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Handle <input name="handle" required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Rank <input name="rank" type="number" min="0" required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Spend threshold{" "}
-              <input name="minSpendMinor" type="number" min="0" required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Discount basis points{" "}
-              <input
-                name="discountBps"
-                type="number"
-                min="0"
-                max="10000"
-                required
-              />
-            </label>
-          </p>
-          <s-button type="submit">Add tier</s-button>
-        </Form>
-      </s-section>
-    </s-page>
+          </Card>
+
+          <Card>
+            <SectionHeader
+              title="Tier list"
+              description={`${data.tiers.length}/10 tiers created. The base tier with a zero threshold cannot be deleted.`}
+            />
+            <div className="tier-list">
+              {data.tiers.map((tier) => (
+                <Form method="post" className="tier-row" key={tier.id}>
+                  <input type="hidden" name="id" value={tier.id} />
+                  <div className="tier-row__title">
+                    <span className="rank-mark">{tier.rank}</span>
+                    <div>
+                      <strong>{tier.name}</strong>
+                      <small>{tier.handle}</small>
+                    </div>
+                  </div>
+                  <div className="form-grid form-grid--compact">
+                    <label className="field">
+                      <span>Tier name</span>
+                      <input name="name" defaultValue={tier.name} required />
+                    </label>
+                    <label className="field">
+                      <span>Rank</span>
+                      <input
+                        name="rank"
+                        type="number"
+                        min="0"
+                        defaultValue={tier.rank}
+                        required
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Spend threshold</span>
+                      <input
+                        name="minSpendMinor"
+                        type="number"
+                        min="0"
+                        defaultValue={tier.minSpendMinor}
+                        required
+                      />
+                    </label>
+                    <label className="field">
+                      <span>Discount (bps)</span>
+                      <input
+                        name="discountBps"
+                        type="number"
+                        min="0"
+                        max="10000"
+                        defaultValue={tier.discountBps}
+                        required
+                      />
+                      <small>100 bps = 1%</small>
+                    </label>
+                  </div>
+                  <div className="form-actions">
+                    <button
+                      className="button button-secondary button-small"
+                      type="submit"
+                      name="intent"
+                      value="tier-update"
+                    >
+                      Save changes
+                    </button>
+                    {tier.minSpendMinor !== "0" && (
+                      <button
+                        className="button button-danger button-small"
+                        type="submit"
+                        name="intent"
+                        value="tier-delete"
+                      >
+                        Delete tier
+                      </button>
+                    )}
+                  </div>
+                </Form>
+              ))}
+            </div>
+          </Card>
+
+          <Card>
+            <SectionHeader
+              title="Add a new tier"
+              description="Thresholds and ranks should increase together so automatic tiering stays accurate."
+            />
+            <Form method="post" className="stack-form">
+              <input type="hidden" name="intent" value="tier" />
+              <div className="form-grid">
+                <label className="field">
+                  <span>Display name</span>
+                  <input name="name" placeholder="Example: Gold" required />
+                </label>
+                <label className="field">
+                  <span>Tier handle</span>
+                  <input name="handle" placeholder="gold" required />
+                  <small>
+                    Lowercase identifier used for data synchronization.
+                  </small>
+                </label>
+                <label className="field">
+                  <span>Tier rank</span>
+                  <input
+                    name="rank"
+                    type="number"
+                    min="0"
+                    placeholder="2"
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Spend threshold</span>
+                  <input
+                    name="minSpendMinor"
+                    type="number"
+                    min="0"
+                    placeholder="5000000"
+                    required
+                  />
+                </label>
+                <label className="field">
+                  <span>Discount (bps)</span>
+                  <input
+                    name="discountBps"
+                    type="number"
+                    min="0"
+                    max="10000"
+                    placeholder="500"
+                    required
+                  />
+                  <small>For example, 500 bps equals 5%.</small>
+                </label>
+              </div>
+              <div className="form-actions">
+                <button className="button button-primary" type="submit">
+                  Add tier
+                </button>
+              </div>
+            </Form>
+          </Card>
+        </div>
+
+        <aside className="content-aside">
+          <Card>
+            <SectionHeader
+              title="Configuration flow"
+              description="Each step prepares the data required by the next one."
+            />
+            <FlowSteps
+              steps={[
+                {
+                  label: "Create tiers",
+                  description: "Define rank, spend threshold, and discount.",
+                  state: data.tiers.length ? "done" : "current",
+                  href: "#",
+                },
+                {
+                  label: "Configure product access",
+                  description: "Choose products reserved for eligible members.",
+                  state: data.tiers.length ? "current" : "next",
+                  href: "/app/access",
+                },
+                {
+                  label: "Create rewards",
+                  description: "Add point-redemption and tier-based benefits.",
+                  state: "next",
+                  href: "/app/rewards",
+                },
+                {
+                  label: "Activate",
+                  description:
+                    "Return here, review the start time, and publish.",
+                  state: data.enabled ? "done" : "next",
+                  href: "#",
+                },
+              ]}
+            />
+          </Card>
+          <Card>
+            <SectionHeader title="Quick conversion" />
+            <ul className="help-list">
+              <li>
+                <strong>100 bps</strong> = 1% discount
+              </li>
+              <li>
+                <strong>500 bps</strong> = 5% discount
+              </li>
+              <li>
+                <strong>1,000 bps</strong> = 10% discount
+              </li>
+              <li>
+                Spend thresholds use the store currency&apos;s minor unit.
+              </li>
+            </ul>
+          </Card>
+        </aside>
+      </div>
+    </main>
   );
 }
 

@@ -14,7 +14,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - ./ops/postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${POSTGRES_HOST_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d vip_pricing"]
       interval: 10s
@@ -42,6 +42,7 @@ services:
       DB_NAME: vip_pricing
       DB_USER: vip_pricing
       DB_PASSWORD: ${VIP_RUNTIME_DB_PASSWORD:?required}
+      AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 300
       DEFAULT_POOL_SIZE: 30
