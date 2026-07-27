@@ -1,0 +1,379 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ShopStatus {
+  PENDING
+  ACTIVE
+  PAUSED
+  UNINSTALLED
+  REDACTED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  FROZEN
+  CANCELLED
+}
+
+enum LedgerType {
+  EARN
+  REFUND
+  REDEEM_RESERVED
+  REDEEM_COMPENSATED
+  MANUAL_ADJUSTMENT
+}
+
+enum RewardType {
+  FIXED_DISCOUNT
+  FREE_PRODUCT
+}
+
+enum RedemptionStatus {
+  PENDING
+  ISSUED
+  REDEEMED
+  CANCELLED
+  FAILED
+  EXPIRED
+}
+
+enum WebhookStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AccessRuleType {
+  LOGIN_REQUIRED
+  MINIMUM_TIER
+}
+
+model Session {
+  id                  String    @id
+  shop                String
+  state               String
+  isOnline            Boolean   @default(false)
+  scope               String?
+  expires             DateTime?
+  accessToken         String
+  userId              BigInt?
+  firstName           String?
+  lastName            String?
+  email               String?
+  accountOwner        Boolean   @default(false)
+  locale              String?
+  collaborator        Boolean?  @default(false)
+  emailVerified       Boolean?  @default(false)
+  refreshToken        String?
+  refreshTokenExpires DateTime?
+
+  @@index([shop])
+}
+
+model Shop {
+  id             String      @id @default(uuid()) @db.Uuid
+  domain         String      @unique
+  shopifyShopGid String?
+  currencyCode   String      @default("USD")
+  timezone       String      @default("UTC")
+  status         ShopStatus  @default(PENDING)
+  goLiveAt       DateTime?
+  installedAt    DateTime    @default(now())
+  uninstalledAt  DateTime?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  programConfig         ProgramConfig?
+  subscription          Subscription?
+  tiers                 Tier[]
+  productAccessRules    ProductAccessRule[]
+  members               Member[]
+  orderFacts            OrderFact[]
+  pointsLedger          PointsLedger[]
+  rewards               Reward[]
+  redemptions           Redemption[]
+  webhookEvents         WebhookEvent[]
+  outboxJobs            OutboxJob[]
+  functionConfigVersions FunctionConfigVersion[]
+  syncRuns              SyncRun[]
+  auditLogs             AuditLog[]
+}
+
+model Subscription {
+  id                    String             @id @default(uuid()) @db.Uuid
+  shopId                String             @unique @db.Uuid
+  planHandle            String
+  status                SubscriptionStatus @default(TRIAL)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  loyaltyOrdersThisPeriod Int              @default(0)
+  overLimitPeriods      Int                @default(0)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  shop                  Shop               @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model ProgramConfig {
+  id                   String   @id @default(uuid()) @db.Uuid
+  shopId               String   @unique @db.Uuid
+  enabled              Boolean  @default(false)
+  goLiveAt             DateTime?
+  configVersion        Int      @default(1)
+  pointsEarnNumerator  Int      @default(1)
+  pointsSpendMinor     BigInt   @default(100)
+  badgePosition        String   @default("top-left")
+  badgeBackground      String   @default("#f5f5f5")
+  badgeForeground      String   @default("#111111")
+  badgeBorderRadiusPx  Int      @default(0)
+  shopifyDiscountGid   String?
+  shopifyValidationGid String?
+  customSelectors      Json?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  shop                 Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+}
+
+model Tier {
+  id             String   @id @default(uuid()) @db.Uuid
+  shopId         String   @db.Uuid
+  handle         String
+  name           String
+  rank           Int
+  minSpendMinor  BigInt
+  discountBps    Int
+  color          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  members        Member[]
+  rewards        Reward[]
+
+  @@unique([shopId, handle])
+  @@unique([shopId, rank])
+  @@unique([shopId, id])
+  @@index([shopId, minSpendMinor])
+}
+
+model ProductAccessRule {
+  id                 String         @id @default(uuid()) @db.Uuid
+  shopId             String         @db.Uuid
+  name               String
+  enabled            Boolean        @default(true)
+  type               AccessRuleType
+  minimumTierRank    Int?
+  includeTags        String[]       @default([])
+  excludeTags        String[]       @default([])
+  collectionGids     String[]       @default([])
+  productGids        String[]       @default([])
+  messageVi          String         @default("Sản phẩm này chỉ dành cho thành viên đủ hạng.")
+  messageEn          String         @default("This product requires a higher membership tier.")
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  shop               Shop           @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, enabled])
+}
+
+model Member {
+  id                 String   @id @default(uuid()) @db.Uuid
+  shopId             String   @db.Uuid
+  customerGid        String
+  currentTierId      String?  @db.Uuid
+  netSpendMinor      BigInt   @default(0)
+  pointsBalance      BigInt   @default(0)
+  stateVersion       Int      @default(1)
+  lastOrderAt        DateTime?
+  metafieldSyncedAt  DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  shop               Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  currentTier        Tier?    @relation(fields: [shopId, currentTierId], references: [shopId, id], onDelete: NoAction)
+  ledger             PointsLedger[]
+  redemptions        Redemption[]
+
+  @@unique([shopId, customerGid])
+  @@unique([shopId, id])
+  @@index([shopId, currentTierId])
+}
+
+model OrderFact {
+  id                   String   @id @default(uuid()) @db.Uuid
+  shopId               String   @db.Uuid
+  orderGid             String
+  customerGid          String?
+  eligiblePaidMinor    BigInt   @default(0)
+  refundedMinor        BigInt   @default(0)
+  currencyCode         String
+  paidAt               DateTime
+  cancelledAt          DateTime?
+  lastSourceUpdatedAt  DateTime
+  processedAt          DateTime @default(now())
+  shop                 Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, orderGid])
+  @@index([shopId, customerGid, paidAt])
+}
+
+model PointsLedger {
+  id             String     @id @default(uuid()) @db.Uuid
+  shopId         String     @db.Uuid
+  memberId       String     @db.Uuid
+  type           LedgerType
+  delta          BigInt
+  balanceAfter   BigInt
+  referenceGid   String?
+  idempotencyKey String
+  metadata       Json?
+  occurredAt     DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+  shop           Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  member         Member     @relation(fields: [shopId, memberId], references: [shopId, id], onDelete: Cascade)
+
+  @@unique([shopId, idempotencyKey])
+  @@index([shopId, memberId, occurredAt(sort: Desc)])
+}
+
+model Reward {
+  id                    String     @id @default(uuid()) @db.Uuid
+  shopId                String     @db.Uuid
+  minimumTierId         String?    @db.Uuid
+  name                  String
+  type                  RewardType
+  pointsCost            BigInt
+  fixedAmountMinor      BigInt?
+  freeProductVariantGid String?
+  active                Boolean    @default(true)
+  validityDays          Int        @default(30)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  shop                  Shop       @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  minimumTier           Tier?      @relation(fields: [shopId, minimumTierId], references: [shopId, id], onDelete: NoAction)
+  redemptions           Redemption[]
+
+  @@index([shopId, active])
+  @@unique([shopId, id])
+}
+
+model Redemption {
+  id                    String           @id @default(uuid()) @db.Uuid
+  shopId                String           @db.Uuid
+  memberId              String           @db.Uuid
+  rewardId              String           @db.Uuid
+  status                RedemptionStatus @default(PENDING)
+  pointsCost            BigInt
+  idempotencyKey        String
+  shopifyDiscountGid    String?
+  discountCodeEncrypted String?
+  expiresAt             DateTime?
+  issuedAt              DateTime?
+  redeemedAt            DateTime?
+  cancelledAt           DateTime?
+  failureReason         String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  shop                  Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  member                Member           @relation(fields: [shopId, memberId], references: [shopId, id], onDelete: Cascade)
+  reward                Reward           @relation(fields: [shopId, rewardId], references: [shopId, id], onDelete: Restrict)
+
+  @@unique([shopId, idempotencyKey])
+  @@index([shopId, memberId, createdAt(sort: Desc)])
+}
+
+model FunctionConfigVersion {
+  id             String   @id @default(uuid()) @db.Uuid
+  shopId         String   @db.Uuid
+  version        Int
+  discountConfig Json
+  accessConfig   Json
+  publishedAt    DateTime?
+  createdAt      DateTime @default(now())
+  shop           Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, version])
+}
+
+model WebhookEvent {
+  id             String        @id @default(uuid()) @db.Uuid
+  shopId         String?       @db.Uuid
+  webhookId      String        @unique
+  shopDomain     String
+  topic          String
+  status         WebhookStatus @default(RECEIVED)
+  payload        Json?
+  sourceOccurredAt DateTime?
+  attempts       Int           @default(0)
+  error          String?
+  receivedAt     DateTime      @default(now())
+  processedAt    DateTime?
+  shop           Shop?         @relation(fields: [shopId], references: [id], onDelete: SetNull)
+
+  @@index([shopDomain, status, receivedAt])
+}
+
+model OutboxJob {
+  id          String       @id @default(uuid()) @db.Uuid
+  shopId      String       @db.Uuid
+  type        String
+  aggregateId String
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  availableAt DateTime     @default(now())
+  lockedAt    DateTime?
+  completedAt DateTime?
+  lastError   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  shop        Shop         @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([shopId, aggregateId])
+}
+
+model SyncRun {
+  id          String   @id @default(uuid()) @db.Uuid
+  shopId      String   @db.Uuid
+  type        String
+  status      String
+  cursor      String?
+  processed   Int      @default(0)
+  failed      Int      @default(0)
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+  error       String?
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, startedAt(sort: Desc)])
+}
+
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  shopId        String   @db.Uuid
+  actorType     String
+  actorId       String?
+  action        String
+  aggregateType String
+  aggregateId   String?
+  before        Json?
+  after         Json?
+  createdAt     DateTime @default(now())
+  shop          Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@index([shopId, createdAt(sort: Desc)])
+}

@@ -1,0 +1,18 @@
+api_version = "2026-07"
+
+[[extensions]]
+name = "VIP member discount"
+handle = "member-discount"
+type = "function"
+description = "Stacks the tier benefit from the catalog compare-at price."
+
+  [[extensions.targeting]]
+  target = "cart.lines.discounts.generate.run"
+  input_query = "src/cart_lines_discounts_generate_run.graphql"
+  export = "cart_lines_discounts_generate_run"
+
+  [extensions.build]
+  command = "cargo build --target=wasm32-unknown-unknown --release"
+  path = "target/wasm32-unknown-unknown/release/member_discount.wasm"
+  watch = ["src/**/*.rs"]
+

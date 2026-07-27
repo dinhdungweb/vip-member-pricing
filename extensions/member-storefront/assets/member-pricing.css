@@ -1,0 +1,47 @@
+.vip-pricing-anchor {
+  position: relative;
+}
+
+.vip-pricing-badge {
+  position: absolute;
+  z-index: 4;
+  top: var(--vip-badge-top, 12px);
+  left: 12px;
+  padding: 6px 10px;
+  border-radius: var(--vip-badge-radius, 0);
+  background: var(--vip-badge-background, #f5f5f5);
+  color: var(--vip-badge-foreground, #111);
+  font: 600 11px/1.2 inherit;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.vip-pricing-badge[data-position="top-right"] {
+  right: 12px;
+  left: auto;
+}
+
+.vip-pricing-badge[data-position="bottom-left"] {
+  top: auto;
+  bottom: 12px;
+}
+
+.vip-pricing-badge[data-position="bottom-right"] {
+  top: auto;
+  right: 12px;
+  bottom: 12px;
+  left: auto;
+}
+
+.vip-pricing-member-price {
+  display: inline-block;
+  margin-inline-start: 0.5rem;
+  color: inherit;
+  font-weight: 700;
+}
+
+.vip-pricing-access-message {
+  margin-block-start: 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}

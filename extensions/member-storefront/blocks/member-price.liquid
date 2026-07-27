@@ -1,0 +1,22 @@
+{% liquid
+  assign selected_variant = product.selected_or_first_available_variant
+%}
+<div
+  class="vip-member-product"
+  data-vip-product-card
+  data-vip-handle="{{ product.handle | escape }}"
+  data-vip-variant-id="{{ selected_variant.id }}"
+  data-vip-price="{{ selected_variant.price | money_without_currency | replace: ',', '' }}"
+  data-vip-compare-at-price="{{ selected_variant.compare_at_price | money_without_currency | replace: ',', '' }}"
+  data-vip-available="{{ selected_variant.available }}"
+  {{ block.shopify_attributes }}
+></div>
+
+{% schema %}
+{
+  "name": "VIP member price",
+  "target": "section",
+  "settings": []
+}
+{% endschema %}
+

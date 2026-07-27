@@ -1,0 +1,51 @@
+client_id = ""
+name = "VIP Member Pricing Staging"
+handle = "vip-member-pricing-staging"
+application_url = "https://staging.app.example.com"
+embedded = true
+
+[auth]
+redirect_urls = [
+  "https://staging.app.example.com/auth/callback",
+  "https://staging.app.example.com/auth/shopify/callback",
+  "https://staging.app.example.com/api/auth/callback"
+]
+
+[access_scopes]
+scopes = "read_customers,write_customers,read_orders,read_products,read_discounts,write_discounts,write_validations"
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/app/uninstalled"
+  topics = ["app/uninstalled"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/orders/paid"
+  topics = ["orders/paid"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/refunds/create"
+  topics = ["refunds/create"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/orders/cancelled"
+  topics = ["orders/cancelled"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/data_request"
+  compliance_topics = ["customers/data_request"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/customers/redact"
+  compliance_topics = ["customers/redact"]
+
+  [[webhooks.subscriptions]]
+  uri = "/webhooks/shop/redact"
+  compliance_topics = ["shop/redact"]
+
+[app_proxy]
+url = "/apps/vip-member"
+subpath = "vip-member"
+prefix = "apps"

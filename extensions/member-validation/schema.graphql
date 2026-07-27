@@ -1,0 +1,74 @@
+schema {
+  query: Input
+  mutation: MutationRoot
+}
+
+directive @oneOf on INPUT_OBJECT
+scalar JSON
+
+type Input {
+  cart: Cart!
+  validation: Validation!
+}
+
+type Cart {
+  buyerIdentity: BuyerIdentity
+  lines: [CartLine!]!
+}
+
+type BuyerIdentity {
+  customer: Customer
+}
+
+type Customer {
+  metafield(namespace: String!, key: String!): Metafield
+}
+
+type Metafield {
+  jsonValue: JSON!
+}
+
+type CartLine {
+  id: ID!
+  merchandise: Merchandise!
+}
+
+union Merchandise = ProductVariant | CustomProduct
+
+type ProductVariant {
+  id: ID!
+  product: Product!
+}
+
+type CustomProduct {
+  title: String!
+}
+
+type Product {
+  id: ID!
+}
+
+type Validation {
+  metafield(namespace: String!, key: String!): Metafield
+}
+
+input CartValidationsGenerateRunResult {
+  operations: [Operation!]!
+}
+
+input Operation @oneOf {
+  validationAdd: ValidationAddOperation
+}
+
+input ValidationAddOperation {
+  errors: [ValidationError!]!
+}
+
+input ValidationError {
+  message: String!
+  target: String!
+}
+
+type MutationRoot {
+  noop: Boolean
+}

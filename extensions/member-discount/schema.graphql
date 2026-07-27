@@ -1,0 +1,117 @@
+schema {
+  query: Input
+  mutation: MutationRoot
+}
+
+directive @oneOf on INPUT_OBJECT
+scalar Decimal
+scalar JSON
+
+type Input {
+  cart: Cart!
+  discount: Discount!
+}
+
+type Cart {
+  buyerIdentity: BuyerIdentity
+  lines: [CartLine!]!
+}
+
+type BuyerIdentity {
+  customer: Customer
+}
+
+type Customer {
+  metafield(namespace: String!, key: String!): Metafield
+}
+
+type Metafield {
+  jsonValue: JSON!
+}
+
+type CartLine {
+  id: ID!
+  cost: CartLineCost!
+  merchandise: Merchandise!
+}
+
+type CartLineCost {
+  amountPerQuantity: MoneyV2!
+  compareAtAmountPerQuantity: MoneyV2
+}
+
+type MoneyV2 {
+  amount: Decimal!
+}
+
+union Merchandise = ProductVariant | CustomProduct
+
+type ProductVariant {
+  id: ID!
+  product: Product!
+}
+
+type CustomProduct {
+  title: String!
+}
+
+type Product {
+  id: ID!
+}
+
+type Discount {
+  metafield(namespace: String!, key: String!): Metafield
+}
+
+input CartLinesDiscountsGenerateRunResult {
+  operations: [CartOperation!]!
+}
+
+input CartOperation @oneOf {
+  productDiscountsAdd: ProductDiscountsAddOperation
+}
+
+input ProductDiscountsAddOperation {
+  selectionStrategy: ProductDiscountSelectionStrategy!
+  candidates: [ProductDiscountCandidate!]!
+}
+
+enum ProductDiscountSelectionStrategy {
+  FIRST
+  MAXIMUM
+  ALL
+}
+
+input ProductDiscountCandidate {
+  targets: [ProductDiscountCandidateTarget!]!
+  value: ProductDiscountCandidateValue!
+  message: String
+  associatedDiscountCode: AssociatedDiscountCode
+}
+
+input ProductDiscountCandidateTarget @oneOf {
+  cartLine: CartLineTarget
+}
+
+input CartLineTarget {
+  id: ID!
+  quantity: Int
+}
+
+input ProductDiscountCandidateValue @oneOf {
+  fixedAmount: ProductDiscountCandidateFixedAmount
+}
+
+input ProductDiscountCandidateFixedAmount {
+  amount: Decimal!
+  appliesToEachItem: Boolean
+}
+
+input AssociatedDiscountCode {
+  code: String!
+}
+
+type MutationRoot {
+  noop: Boolean
+}
+

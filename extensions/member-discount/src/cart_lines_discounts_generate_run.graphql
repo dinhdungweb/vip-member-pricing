@@ -1,0 +1,36 @@
+query Input {
+  cart {
+    buyerIdentity {
+      customer {
+        metafield(namespace: "$app:vip_pricing", key: "member_state") {
+          jsonValue
+        }
+      }
+    }
+    lines {
+      id
+      cost {
+        amountPerQuantity {
+          amount
+        }
+        compareAtAmountPerQuantity {
+          amount
+        }
+      }
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  discount {
+    metafield(namespace: "$app:vip_pricing", key: "discount_config") {
+      jsonValue
+    }
+  }
+}
+

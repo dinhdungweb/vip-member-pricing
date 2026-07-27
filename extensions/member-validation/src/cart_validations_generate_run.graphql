@@ -1,0 +1,28 @@
+query Input {
+  cart {
+    buyerIdentity {
+      customer {
+        metafield(namespace: "$app:vip_pricing", key: "member_state") {
+          jsonValue
+        }
+      }
+    }
+    lines {
+      id
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          id
+          product {
+            id
+          }
+        }
+      }
+    }
+  }
+  validation {
+    metafield(namespace: "$app:vip_pricing", key: "access_config") {
+      jsonValue
+    }
+  }
+}

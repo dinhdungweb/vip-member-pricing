@@ -1,0 +1,24 @@
+<script
+  src="{{ 'member-pricing.js' | asset_url }}"
+  data-vip-member-pricing
+  data-context-url="/apps/vip-member/context"
+  data-card-selector="{{ block.settings.card_selector | escape }}"
+  defer
+></script>
+{{ 'member-pricing.css' | asset_url | stylesheet_tag }}
+
+{% schema %}
+{
+  "name": "VIP member pricing",
+  "target": "body",
+  "settings": [
+    {
+      "type": "text",
+      "id": "card_selector",
+      "label": "Custom product card selector",
+      "info": "Optional. Leave blank for Shopify free themes."
+    }
+  ]
+}
+{% endschema %}
+
