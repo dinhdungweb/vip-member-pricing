@@ -30,7 +30,7 @@
     "node": ">=20.19 <22 || >=22.12"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.9.0",
+    "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.0",
     "@react-router/dev": "^7.18.1",
     "@react-router/fs-routes": "^7.18.1",
@@ -47,13 +47,13 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router": "^7.18.1",
-    "tsx": "^4.23.1",
+    "tsx": "^4.23.12",
     "vite-tsconfig-paths": "^6.0.4",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@shopify/api-codegen-preset": "^2.0.0",
-    "@shopify/polaris-types": "1.0.1",
+    "@shopify/polaris-types": "1.0.7",
     "@types/eslint": "^9.6.1",
     "@types/node": "^25.5.2",
     "@types/pg": "^8.15.5",
@@ -71,7 +71,7 @@
     "prettier": "^3.6.2",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "workspaces": {
     "packages": [
